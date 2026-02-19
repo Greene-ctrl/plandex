@@ -63,7 +63,7 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 	// log.Println("Tell plan - formatModelContext - currentStage.TellStage:\n", currentStage.TellStage)
 	// log.Println("Tell plan - formatModelContext - smartContextEnabled:\n", smartContextEnabled)
 
-	if currentStage.TellStage == shared.TellStageImplementation && smartContextEnabled && state.currentSubtask != nil {
+	if (currentStage.TellStage == shared.TellStageImplementation || currentStage.TellStage == shared.TellStageDetailedPlanning) && smartContextEnabled && state.currentSubtask != nil {
 		log.Println("Tell plan - formatModelContext - implementation stage - smart context enabled for current subtask")
 		for _, path := range state.currentSubtask.UsesFiles {
 			uses[path] = true
@@ -109,9 +109,9 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 			}
 		}
 
-		if currentStage.TellStage == shared.TellStageImplementation && smartContextEnabled && state.currentSubtask != nil && part.ContextType == shared.ContextFileType && !uses[part.FilePath] {
+		if (currentStage.TellStage == shared.TellStageImplementation || currentStage.TellStage == shared.TellStageDetailedPlanning) && smartContextEnabled && state.currentSubtask != nil && part.ContextType == shared.ContextFileType && !uses[part.FilePath] {
 			if verboseLogging {
-				log.Println("Tell plan - formatModelContext - skipping part -- currentStage.TellStage == shared.TellStageImplementation && smartContextEnabled && state.currentSubtask != nil && part.ContextType == shared.ContextFileType && !uses[part.FilePath]")
+				log.Println("Tell plan - formatModelContext - skipping part -- (currentStage.TellStage == shared.TellStageImplementation || currentStage.TellStage == shared.TellStageDetailedPlanning) && smartContextEnabled && state.currentSubtask != nil && part.ContextType == shared.ContextFileType && !uses[part.FilePath]")
 			}
 			continue
 		}
@@ -156,7 +156,7 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 	for filePath, body := range pendingFiles {
 		if !addedFilesSet[filePath] {
 
-			if currentStage.TellStage == shared.TellStageImplementation && smartContextEnabled && !uses[filePath] {
+			if (currentStage.TellStage == shared.TellStageImplementation || currentStage.TellStage == shared.TellStageDetailedPlanning) && smartContextEnabled && !uses[filePath] {
 				continue
 			}
 
@@ -236,7 +236,7 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 			// if we're in the context phase and the file is pending, just include that the file is pending, not the full content
 			// there is generally enough related context from the conversation and summary to decide on whether to load the file or not
 			// without this, the context phase can get overloaded with pending file content
-			if currentStage.TellStage == shared.TellStagePlanning &&
+			if (currentStage.TellStage == shared.TellStagePlanning || currentStage.TellStage == shared.TellStagePlanningContext) &&
 				currentStage.PlanningPhase == shared.PlanningPhaseContext &&
 				part.IsPending {
 				fmtStr = "\n\n- File `%s` has pending changes (%d 🪙)"
@@ -295,7 +295,7 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 
 	if includeApplyScript &&
 		// don't show _apply.sh history and content if smart context is enabled and the current subtask doesn't use it
-		!(currentStage.TellStage == shared.TellStageImplementation && smartContextEnabled && state.currentSubtask != nil && !uses["_apply.sh"]) {
+		!((currentStage.TellStage == shared.TellStageImplementation || currentStage.TellStage == shared.TellStageDetailedPlanning) && smartContextEnabled && state.currentSubtask != nil && !uses["_apply.sh"]) {
 
 		execHistory := state.currentPlanState.ExecHistory()
 
@@ -311,7 +311,7 @@ func (state *activeTellStreamState) formatModelContext(params formatModelContext
 		execScriptLines = append(execScriptLines, "*Current* state of _apply.sh script:")
 		execScriptLines = append(execScriptLines, fmt.Sprintf("\n\n- _apply.sh:\n\n```\n%s\n```", scriptContent))
 
-		if isEmpty && currentStage.TellStage == shared.TellStagePlanning && currentStage.PlanningPhase != shared.PlanningPhaseContext {
+		if isEmpty && (currentStage.TellStage == shared.TellStagePlanning || currentStage.TellStage == shared.TellStagePlanningContext || currentStage.TellStage == shared.TellStageDetailedPlanning) && currentStage.PlanningPhase != shared.PlanningPhaseContext {
 			execScriptLines = append(execScriptLines, "The _apply.sh script is *empty*. You ABSOLUTELY MUST include a '### Commands' section in your response prior to the '### Tasks' section that evaluates whether any commands should be written to _apply.sh during the plan. This is MANDATORY. Do NOT UNDER ANY CIRCUMSTANCES omit this section. If you determine that commands should be added or updated in _apply.sh, you MUST also create a subtask referencing _apply.sh in the '### Tasks' section.")
 
 			if execHistory != "" {
@@ -383,7 +383,9 @@ func (state *activeTellStreamState) checkAutoLoadContext() checkAutoLoadContextR
 	// can only auto load context in planning stage
 	// context phase is primary loading phase
 	// planning phase can still load additional context files as a backup
-	if currentStage.TellStage != shared.TellStagePlanning {
+	if currentStage.TellStage != shared.TellStagePlanning &&
+		currentStage.TellStage != shared.TellStagePlanningContext &&
+		currentStage.TellStage != shared.TellStageDetailedPlanning {
 		return checkAutoLoadContextResult{}
 	}
 

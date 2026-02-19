@@ -24,7 +24,6 @@ func (state *activeTellStreamState) resolveCurrentStage() (activatePaths map[str
 	iteration := state.iteration
 	hasContextMap := state.hasContextMap
 	convo := state.convo
-	contextMapEmpty := state.contextMapEmpty
 
 	log.Printf("[resolveCurrentStage] Initial state: hasContextMap: %v, convo len: %d", hasContextMap, len(convo))
 
@@ -53,44 +52,59 @@ func (state *activeTellStreamState) resolveCurrentStage() (activatePaths map[str
 	var tellStage shared.TellStage
 	var planningPhase shared.PlanningPhase
 
-	if isUserPrompt {
-		tellStage = shared.TellStagePlanning
-		log.Println("[resolveCurrentStage] Set tellStage to Planning due to user prompt")
-	} else {
-		if lastConvoMsg != nil && lastConvoMsg.Flags.DidMakePlan {
-			tellStage = shared.TellStageImplementation
-			log.Println("[resolveCurrentStage] Set tellStage to Implementation - DidMakePlan: true, IsChatOnly: false")
-		} else if lastConvoMsg != nil && lastConvoMsg.Flags.CurrentStage.TellStage == shared.TellStageImplementation {
-			tellStage = shared.TellStageImplementation
-			log.Println("[resolveCurrentStage] Set tellStage to Implementation - CurrentStage: implementation")
+	if req.IsChatOnly {
+		tellStage = shared.TellStageChat
+		planningPhase = shared.PlanningPhaseTasks
+		log.Println("[resolveCurrentStage] Set tellStage to Chat")
+	} else if lastConvoMsg == nil || lastConvoMsg.Role == openai.ChatMessageRoleUser || isContinueFromAssistantMsg {
+		// Determine stage based on what happened before
+		if lastConvoMsg == nil {
+			tellStage = shared.TellStagePlanningContext
+			planningPhase = shared.PlanningPhaseContext
+			log.Println("[resolveCurrentStage] Set tellStage to PlanningContext (initial)")
 		} else {
-			tellStage = shared.TellStagePlanning
-			log.Printf("[resolveCurrentStage] Set tellStage to Planning - DidMakePlan: %v, IsChatOnly: %v",
-				lastConvoMsg != nil && lastConvoMsg.Flags.DidMakePlan, req.IsChatOnly)
+			prevStage := lastConvoMsg.Flags.CurrentStage
+			if prevStage.TellStage == shared.TellStageChat {
+				tellStage = shared.TellStagePlanningContext
+				planningPhase = shared.PlanningPhaseContext
+				log.Println("[resolveCurrentStage] Set tellStage to PlanningContext (after Chat)")
+			} else if prevStage.TellStage == shared.TellStagePlanningContext {
+				tellStage = shared.TellStageDetailedPlanning
+				planningPhase = shared.PlanningPhaseDetailed
+				log.Println("[resolveCurrentStage] Set tellStage to DetailedPlanning (after PlanningContext)")
+			} else if prevStage.TellStage == shared.TellStageDetailedPlanning {
+				tellStage = shared.TellStageDetailedPlanning
+				planningPhase = shared.PlanningPhaseDetailed
+				log.Println("[resolveCurrentStage] Set tellStage to DetailedPlanning (continued)")
+			} else {
+				tellStage = shared.TellStagePlanningContext
+				planningPhase = shared.PlanningPhaseContext
+				log.Println("[resolveCurrentStage] Set tellStage to PlanningContext (default)")
+			}
+		}
+	} else {
+		// Assistant just replied, move forward
+		prevStage := lastConvoMsg.Flags.CurrentStage
+		if prevStage.TellStage == shared.TellStagePlanningContext {
+			tellStage = shared.TellStageDetailedPlanning
+			planningPhase = shared.PlanningPhaseDetailed
+			log.Println("[resolveCurrentStage] Set tellStage to DetailedPlanning (assistant replied to PlanningContext)")
+		} else if prevStage.TellStage == shared.TellStageChat {
+			tellStage = shared.TellStageChat
+			planningPhase = shared.PlanningPhaseTasks
+			log.Println("[resolveCurrentStage] Stayed in Chat stage")
+		} else {
+			tellStage = prevStage.TellStage
+			planningPhase = prevStage.PlanningPhase
+			log.Printf("[resolveCurrentStage] Stayed in stage: %s, phase: %s", tellStage, planningPhase)
 		}
 	}
 
-	wasContextStage := false
-	if lastConvoMsg != nil {
-		flags := lastConvoMsg.Flags
-		log.Printf("[resolveCurrentStage] Last convo message flags: %+v", flags)
-		if flags.CurrentStage.TellStage == shared.TellStagePlanning && flags.CurrentStage.PlanningPhase == shared.PlanningPhaseContext {
-			wasContextStage = true
+	if tellStage == shared.TellStagePlanningContext {
+		if lastConvoMsg != nil && lastConvoMsg.Flags.CurrentStage.PlanningPhase == shared.PlanningPhaseContext {
 			activatePaths = lastConvoMsg.ActivatedPaths
 			activatePathsOrdered = lastConvoMsg.ActivatedPathsOrdered
-			log.Printf("[resolveCurrentStage] Was context stage, copied activatePaths: %v", activatePaths)
-		}
-	}
-
-	if tellStage == shared.TellStagePlanning {
-		if req.AutoContext && hasContextMap && !contextMapEmpty && !wasContextStage {
-			planningPhase = shared.PlanningPhaseContext
-			log.Printf("[resolveCurrentStage] Set planningPhase to Context - AutoContext: %v, hasContextMap: %v, contextMapEmpty: %v, wasContextStage: %v",
-				req.AutoContext, hasContextMap, contextMapEmpty, wasContextStage)
-		} else {
-			planningPhase = shared.PlanningPhaseTasks
-			log.Printf("[resolveCurrentStage] Set planningPhase to Tasks - AutoContext: %v, hasContextMap: %v, contextMapEmpty: %v, wasContextStage: %v",
-				req.AutoContext, hasContextMap, contextMapEmpty, wasContextStage)
+			log.Printf("[resolveCurrentStage] Copied activatePaths from previous Context phase: %v", activatePaths)
 		}
 	}
 

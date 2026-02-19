@@ -121,15 +121,19 @@ type Context struct {
 type TellStage string
 
 const (
-	TellStagePlanning       TellStage = "planning"
-	TellStageImplementation TellStage = "implementation"
+	TellStageChat             TellStage = "chat"
+	TellStagePlanningContext  TellStage = "planning-context"
+	TellStageDetailedPlanning TellStage = "detailed-planning"
+	TellStagePlanning         TellStage = "planning"
+	TellStageImplementation   TellStage = "implementation"
 )
 
 type PlanningPhase string
 
 const (
-	PlanningPhaseContext PlanningPhase = "context"
-	PlanningPhaseTasks   PlanningPhase = "tasks"
+	PlanningPhaseContext  PlanningPhase = "context"
+	PlanningPhaseTasks    PlanningPhase = "tasks"
+	PlanningPhaseDetailed PlanningPhase = "detailed"
 )
 
 type CurrentStage struct {

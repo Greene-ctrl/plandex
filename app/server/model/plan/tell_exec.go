@@ -178,16 +178,17 @@ func execTellPlan(params execTellPlanParams) {
 
 	var tentativeModelConfig shared.ModelRoleConfig
 	var tentativeMaxTokens int
-	if state.currentStage.TellStage == shared.TellStagePlanning {
-		if state.currentStage.PlanningPhase == shared.PlanningPhaseContext {
-			log.Println("Tell plan - isContextStage - setting modelConfig to context loader")
-			tentativeModelConfig = state.settings.GetModelPack().GetArchitect()
-			tentativeMaxTokens = state.settings.GetArchitectEffectiveMaxTokens()
-		} else {
-			plannerConfig := state.settings.GetModelPack().Planner
-			tentativeModelConfig = plannerConfig.ModelRoleConfig
-			tentativeMaxTokens = state.settings.GetPlannerEffectiveMaxTokens()
-		}
+	if state.currentStage.TellStage == shared.TellStagePlanningContext ||
+		(state.currentStage.TellStage == shared.TellStagePlanning && state.currentStage.PlanningPhase == shared.PlanningPhaseContext) {
+		log.Println("Tell plan - isContextStage - setting modelConfig to context loader")
+		tentativeModelConfig = state.settings.GetModelPack().GetArchitect()
+		tentativeMaxTokens = state.settings.GetArchitectEffectiveMaxTokens()
+	} else if state.currentStage.TellStage == shared.TellStageDetailedPlanning ||
+		state.currentStage.TellStage == shared.TellStageChat ||
+		state.currentStage.TellStage == shared.TellStagePlanning {
+		plannerConfig := state.settings.GetModelPack().Planner
+		tentativeModelConfig = plannerConfig.ModelRoleConfig
+		tentativeMaxTokens = state.settings.GetPlannerEffectiveMaxTokens()
 	} else if state.currentStage.TellStage == shared.TellStageImplementation {
 		tentativeModelConfig = state.settings.GetModelPack().GetCoder()
 		tentativeMaxTokens = state.settings.GetCoderEffectiveMaxTokens()
@@ -218,7 +219,10 @@ func execTellPlan(params execTellPlanParams) {
 			smartContextEnabled: req.SmartContext,
 			includeApplyScript:  req.ExecEnabled,
 		})
-	} else if state.currentStage.TellStage == shared.TellStagePlanning {
+	} else if state.currentStage.TellStage == shared.TellStagePlanning ||
+		state.currentStage.TellStage == shared.TellStagePlanningContext ||
+		state.currentStage.TellStage == shared.TellStageDetailedPlanning ||
+		state.currentStage.TellStage == shared.TellStageChat {
 		// add the shared context between planning and context phases first so it can be cached
 		// this is just for the map and any manually loaded contexts - auto contexts will be added later
 		planStageSharedMsgs = state.formatModelContext(formatModelContextParams{
@@ -229,7 +233,9 @@ func execTellPlan(params execTellPlanParams) {
 			cacheControl:        true,
 		})
 
-		if state.currentStage.PlanningPhase == shared.PlanningPhaseTasks {
+		if state.currentStage.PlanningPhase == shared.PlanningPhaseTasks ||
+			state.currentStage.PlanningPhase == shared.PlanningPhaseDetailed ||
+			state.currentStage.TellStage == shared.TellStageChat {
 			if req.AutoContext {
 				msg := types.ExtendedChatMessage{
 					Role:    openai.ChatMessageRoleSystem,
@@ -326,12 +332,13 @@ func execTellPlan(params execTellPlanParams) {
 	log.Printf("Total tokens before convo: %d\n", state.tokensBeforeConvo)
 
 	var effectiveMaxTokens int
-	if state.currentStage.TellStage == shared.TellStagePlanning {
-		if state.currentStage.PlanningPhase == shared.PlanningPhaseContext {
-			effectiveMaxTokens = state.settings.GetArchitectEffectiveMaxTokens()
-		} else {
-			effectiveMaxTokens = state.settings.GetPlannerEffectiveMaxTokens()
-		}
+	if state.currentStage.TellStage == shared.TellStagePlanningContext ||
+		(state.currentStage.TellStage == shared.TellStagePlanning && state.currentStage.PlanningPhase == shared.PlanningPhaseContext) {
+		effectiveMaxTokens = state.settings.GetArchitectEffectiveMaxTokens()
+	} else if state.currentStage.TellStage == shared.TellStageDetailedPlanning ||
+		state.currentStage.TellStage == shared.TellStageChat ||
+		state.currentStage.TellStage == shared.TellStagePlanning {
+		effectiveMaxTokens = state.settings.GetPlannerEffectiveMaxTokens()
 	} else if state.currentStage.TellStage == shared.TellStageImplementation {
 		effectiveMaxTokens = state.settings.GetCoderEffectiveMaxTokens()
 	}
@@ -394,15 +401,16 @@ func execTellPlan(params execTellPlanParams) {
 	log.Println("Tell plan - state.currentStage.TellStage:", state.currentStage.TellStage)
 	log.Println("Tell plan - state.currentStage.PlanningPhase:", state.currentStage.PlanningPhase)
 
-	if state.currentStage.TellStage == shared.TellStagePlanning {
-		if state.currentStage.PlanningPhase == shared.PlanningPhaseContext {
-			log.Println("Tell plan - isContextStage - setting modelConfig to context loader")
-			modelConfig = state.settings.GetModelPack().GetArchitect().GetRoleForInputTokens(requestTokens, state.settings)
-			log.Println("Tell plan - got modelConfig for context phase")
-		} else if state.currentStage.PlanningPhase == shared.PlanningPhaseTasks {
-			modelConfig = state.settings.GetModelPack().Planner.GetRoleForInputTokens(requestTokens, state.settings)
-			log.Println("Tell plan - got modelConfig for tasks phase")
-		}
+	if state.currentStage.TellStage == shared.TellStagePlanningContext ||
+		(state.currentStage.TellStage == shared.TellStagePlanning && state.currentStage.PlanningPhase == shared.PlanningPhaseContext) {
+		log.Println("Tell plan - isContextStage - setting modelConfig to context loader")
+		modelConfig = state.settings.GetModelPack().GetArchitect().GetRoleForInputTokens(requestTokens, state.settings)
+		log.Println("Tell plan - got modelConfig for context phase")
+	} else if state.currentStage.TellStage == shared.TellStageDetailedPlanning ||
+		state.currentStage.TellStage == shared.TellStageChat ||
+		state.currentStage.TellStage == shared.TellStagePlanning {
+		modelConfig = state.settings.GetModelPack().Planner.GetRoleForInputTokens(requestTokens, state.settings)
+		log.Println("Tell plan - got modelConfig for planning/detailed/chat phase")
 	} else if state.currentStage.TellStage == shared.TellStageImplementation {
 		modelConfig = state.settings.GetModelPack().GetCoder().GetRoleForInputTokens(requestTokens, state.settings)
 		log.Println("Tell plan - got modelConfig for implementation stage")
@@ -652,12 +660,13 @@ func (state *activeTellStreamState) dryRunCalculateTokensWithoutContext(tentativ
 			model.TokensPerRequest
 
 	var effectiveMaxTokens int
-	if clone.currentStage.TellStage == shared.TellStagePlanning {
-		if clone.currentStage.PlanningPhase == shared.PlanningPhaseContext {
-			effectiveMaxTokens = clone.settings.GetArchitectEffectiveMaxTokens()
-		} else {
-			effectiveMaxTokens = clone.settings.GetPlannerEffectiveMaxTokens()
-		}
+	if clone.currentStage.TellStage == shared.TellStagePlanningContext ||
+		(clone.currentStage.TellStage == shared.TellStagePlanning && clone.currentStage.PlanningPhase == shared.PlanningPhaseContext) {
+		effectiveMaxTokens = clone.settings.GetArchitectEffectiveMaxTokens()
+	} else if clone.currentStage.TellStage == shared.TellStageDetailedPlanning ||
+		clone.currentStage.TellStage == shared.TellStageChat ||
+		clone.currentStage.TellStage == shared.TellStagePlanning {
+		effectiveMaxTokens = clone.settings.GetPlannerEffectiveMaxTokens()
 	} else if clone.currentStage.TellStage == shared.TellStageImplementation {
 		effectiveMaxTokens = clone.settings.GetCoderEffectiveMaxTokens()
 	}

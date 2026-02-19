@@ -201,6 +201,12 @@ func (state *activeTellStreamState) handleStreamFinished() handleStreamFinishedR
 		}
 	}
 
+	// Check for Detailed Planning Loop
+	if state.currentStage.TellStage == shared.TellStageDetailedPlanning {
+		log.Println("Detailed Planning stage finished, starting external API loop")
+		go state.startDetailedPlanningLoop(active.CurrentReplyContent)
+	}
+
 	willContinue := state.willContinuePlan(willContinuePlanParams{
 		hasNewSubtasks:      hasExplicitTasks,
 		allSubtasksFinished: allSubtasksFinished,

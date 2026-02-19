@@ -43,7 +43,19 @@ func (state *activeTellStreamState) getTellSysPrompt(params getTellSysPromptPara
 
 	// log.Println("getTellSysPrompt - prompt params:", spew.Sdump(params))
 
-	if currentStage.TellStage == shared.TellStagePlanning {
+	if currentStage.TellStage == shared.TellStageChat {
+		txt := prompts.GetChatSysPrompt(createPromptParams)
+		sysParts = append(sysParts, types.ExtendedChatMessagePart{
+			Type: openai.ChatMessagePartTypeText,
+			Text: txt,
+			CacheControl: &types.CacheControlSpec{
+				Type: types.CacheControlTypeEphemeral,
+			},
+		})
+	} else if currentStage.TellStage == shared.TellStagePlanning ||
+		currentStage.TellStage == shared.TellStagePlanningContext ||
+		currentStage.TellStage == shared.TellStageDetailedPlanning {
+
 		if len(planningSharedMsgs) == 0 && !params.dryRunWithoutContext {
 			log.Println("planningSharedMsgs is empty - required for planning stage")
 			return nil, fmt.Errorf("planningSharedMsgs is empty - required for planning stage")
@@ -63,6 +75,16 @@ func (state *activeTellStreamState) getTellSysPrompt(params getTellSysPromptPara
 				txt = prompts.GetAutoContextTellPrompt(createPromptParams)
 			}
 
+			sysParts = append(sysParts, types.ExtendedChatMessagePart{
+				Type: openai.ChatMessagePartTypeText,
+				Text: txt,
+				CacheControl: &types.CacheControlSpec{
+					Type: types.CacheControlTypeEphemeral,
+				},
+			})
+		} else if currentStage.PlanningPhase == shared.PlanningPhaseDetailed {
+			log.Println("Planning phase is detailed -- adding detailed planning prompt")
+			txt := prompts.GetDetailedPlanningPrompt(createPromptParams)
 			sysParts = append(sysParts, types.ExtendedChatMessagePart{
 				Type: openai.ChatMessagePartTypeText,
 				Text: txt,

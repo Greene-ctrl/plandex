@@ -147,11 +147,13 @@ func (state *activeTellStreamState) willContinuePlan(params willContinuePlanPara
 	log.Printf("[willContinuePlan] Initial state - hasNewSubtasks: %v, allSubtasksFinished: %v, tellStage: %v, planningPhase: %v, iteration: %d, autoContinue: %v",
 		hasNewSubtasks, allSubtasksFinished, state.currentStage.TellStage, state.currentStage.PlanningPhase, state.iteration, state.req.AutoContinue)
 
-	if state.currentStage.TellStage == shared.TellStagePlanning {
-		log.Println("[willContinuePlan] In planning stage")
+	if state.currentStage.TellStage == shared.TellStagePlanning ||
+		state.currentStage.TellStage == shared.TellStagePlanningContext {
+		log.Println("[willContinuePlan] In planning or planning-context stage")
 
 		// always continue to response or planning phase after context phase
-		if state.currentStage.PlanningPhase == shared.PlanningPhaseContext {
+		if state.currentStage.PlanningPhase == shared.PlanningPhaseContext ||
+			state.currentStage.TellStage == shared.TellStagePlanningContext {
 
 			// if it's the context stage but it's chat mode and no files were loaded, don't continue
 			if state.req.IsChatOnly && len(activatePaths) == 0 {
@@ -199,6 +201,12 @@ func (state *activeTellStreamState) willContinuePlan(params willContinuePlanPara
 
 		return !allSubtasksFinished && currentSubtask != nil
 
+	} else if state.currentStage.TellStage == shared.TellStageChat {
+		log.Println("[willContinuePlan] In chat stage - stopping")
+		return false
+	} else if state.currentStage.TellStage == shared.TellStageDetailedPlanning {
+		log.Println("[willContinuePlan] In detailed planning stage - overview finished, starting iterative loop - stopping main stream")
+		return false
 	} else if state.currentStage.TellStage == shared.TellStageImplementation {
 		log.Println("[willContinuePlan] In implementation stage")
 

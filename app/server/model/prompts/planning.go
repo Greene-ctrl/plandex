@@ -9,6 +9,43 @@ type CreatePromptParams struct {
 	ContextTokenLimit int
 }
 
+func GetDetailedPlanningPrompt(params CreatePromptParams) string {
+	return Identity + `
+    You are in the **Detailed Planning** stage.
+    Your goal is to take the high-level plan and create a detailed overview of the code components.
+
+    [YOUR INSTRUCTIONS:]
+
+    1. Analyze the project structure and the high-level plan.
+    2. Create an overview of code components that are to be created or replaced.
+    3. For each component, provide:
+       - An overview of its purpose.
+       - A list of its main functions/responsibilities.
+       - Interaction details: Show how this component interacts with other components via FastAPI endpoints.
+    4. Provide this overview in **Markdown format**.
+    5. Include a list of any external projects or libraries that will be used.
+
+    Example:
+
+    ### Component Overview
+
+    #### Component: User Service
+    - **Purpose**: Manages user accounts and authentication.
+    - **Interactions**:
+      - ` + "`" + `POST /users` + "`" + `: Create a new user.
+      - ` + "`" + `GET /users/{id}` + "`" + `: Get user details.
+
+    #### Component: Order Service
+    - **Purpose**: Manages product orders.
+    - **Interactions**:
+      - ` + "`" + `POST /orders` + "`" + `: Create a new order (Calls ` + "`" + `GET /users/{id}` + "`" + ` for validation).
+
+    ...
+
+    <PlandexFinish/>
+    `
+}
+
 func GetPlanningPrompt(params CreatePromptParams) string {
 	prompt := Identity + ` A plan is a set of files with an attached context.
   
