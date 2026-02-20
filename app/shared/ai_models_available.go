@@ -583,6 +583,32 @@ var BuiltInModels = []*BaseModelConfigSchema{
 			{Provider: ModelProviderOpenRouter, ModelName: "perplexity/sonar-reasoning"},
 		},
 	},
+	{
+		ModelTag:    "blablador/alias-large",
+		Publisher:   ModelPublisherMistral,
+		Description: "Blablador alias-large",
+		BaseModelShared: BaseModelShared{
+			DefaultMaxConvoTokens: 15000, MaxTokens: 128000,
+			MaxOutputTokens: 32768, ReservedOutputTokens: 16384,
+			PreferredOutputFormat: ModelOutputFormatToolCallJson,
+		},
+		Providers: []BaseModelUsesProvider{
+			{Provider: ModelProviderBlablador, ModelName: "alias-large"},
+		},
+	},
+	{
+		ModelTag:    "blablador/alias-fast",
+		Publisher:   ModelPublisherMistral,
+		Description: "Blablador alias-fast",
+		BaseModelShared: BaseModelShared{
+			DefaultMaxConvoTokens: 15000, MaxTokens: 128000,
+			MaxOutputTokens: 32768, ReservedOutputTokens: 16384,
+			PreferredOutputFormat: ModelOutputFormatToolCallJson,
+		},
+		Providers: []BaseModelUsesProvider{
+			{Provider: ModelProviderBlablador, ModelName: "alias-fast"},
+		},
+	},
 }
 
 var BuiltInBaseModelsById = map[ModelId]*BaseModelConfigSchema{}

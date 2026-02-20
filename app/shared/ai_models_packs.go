@@ -7,6 +7,7 @@ var OSSModelPack ModelPack
 var CheapModelPack ModelPack
 
 var OpusPlannerModelPack ModelPack
+var BlabladorModelPack ModelPack
 
 var AnthropicModelPack ModelPack
 var OpenAIModelPack ModelPack
@@ -38,6 +39,7 @@ var BuiltInModelPacks = []*ModelPack{
 	&O3PlannerModelPack,
 	&R1PlannerModelPack,
 	&PerplexityPlannerModelPack,
+	&BlabladorModelPack,
 }
 
 var BuiltInModelPacksByName = make(map[string]*ModelPack)
@@ -98,6 +100,7 @@ var (
 	GoogleSchema              ModelPackSchema
 	GeminiPlannerSchema       ModelPackSchema
 	OpusPlannerSchema         ModelPackSchema
+	BlabladorSchema           ModelPackSchema
 	R1PlannerSchema           ModelPackSchema
 	PerplexityPlannerSchema   ModelPackSchema
 	O3PlannerSchema           ModelPackSchema
@@ -119,6 +122,7 @@ var BuiltInModelPackSchemas = []*ModelPackSchema{
 	&O3PlannerSchema,
 	&R1PlannerSchema,
 	&PerplexityPlannerSchema,
+	&BlabladorSchema,
 }
 
 func init() {
@@ -182,6 +186,24 @@ func init() {
 			Namer:      getModelRoleConfig(ModelRoleName, "openai/gpt-4.1-mini"),
 			CommitMsg:  getModelRoleConfig(ModelRoleCommitMsg, "openai/gpt-4.1-mini"),
 			ExecStatus: getModelRoleConfig(ModelRoleExecStatus, "openai/o4-mini-medium"),
+		},
+	}
+
+	BlabladorSchema = ModelPackSchema{
+		Name:        "blablador",
+		Description: "Default Blablador model pack. Uses alias-large for heavy lifting and alias-fast for utility tasks.",
+		ModelPackSchemaRoles: ModelPackSchemaRoles{
+			Planner: getModelRoleConfig(ModelRolePlanner, "blablador/alias-large"),
+			Coder:   Pointer(getModelRoleConfig(ModelRoleCoder, "blablador/alias-large")),
+			Architect: Pointer(getModelRoleConfig(ModelRoleArchitect, "blablador/alias-large",
+				getLargeContextFallback(ModelRoleArchitect, "blablador/alias-large"),
+			)),
+			PlanSummary:      getModelRoleConfig(ModelRolePlanSummary, "blablador/alias-fast"),
+			Builder:          getModelRoleConfig(ModelRoleBuilder, "blablador/alias-fast"),
+			WholeFileBuilder: Pointer(getModelRoleConfig(ModelRoleWholeFileBuilder, "blablador/alias-fast")),
+			Namer:            getModelRoleConfig(ModelRoleName, "blablador/alias-fast"),
+			CommitMsg:        getModelRoleConfig(ModelRoleCommitMsg, "blablador/alias-fast"),
+			ExecStatus:       getModelRoleConfig(ModelRoleExecStatus, "blablador/alias-fast"),
 		},
 	}
 
@@ -334,24 +356,6 @@ func init() {
 
 	O3PlannerSchema = ModelPackSchema{
 		Name:        "o3-planner",
-		Description: "Uses Claude Opus 4 for planning, default models for other roles. Supports up to 180k input context.",
-		ModelPackSchemaRoles: ModelPackSchemaRoles{
-			Planner: getModelRoleConfig(ModelRolePlanner, "anthropic/opus-4"),
-			Coder: Pointer(getModelRoleConfig(ModelRoleCoder, "anthropic/claude-sonnet-4",
-				getLargeContextFallback(ModelRoleCoder, "openai/gpt-4.1"),
-			)),
-			PlanSummary: getModelRoleConfig(ModelRolePlanSummary, "openai/o4-mini-low"),
-			Builder:     defaultBuilder,
-			WholeFileBuilder: Pointer(getModelRoleConfig(ModelRoleWholeFileBuilder,
-				"openai/o4-mini-medium")),
-			Namer:      getModelRoleConfig(ModelRoleName, "openai/gpt-4.1-mini"),
-			CommitMsg:  getModelRoleConfig(ModelRoleCommitMsg, "openai/gpt-4.1-mini"),
-			ExecStatus: getModelRoleConfig(ModelRoleExecStatus, "openai/o4-mini-low"),
-		},
-	}
-
-	O3PlannerSchema = ModelPackSchema{
-		Name:        "o3-planner",
 		Description: "Uses OpenAI o3-medium for planning, default models for other roles. Supports up to 160k input context.",
 		ModelPackSchemaRoles: ModelPackSchemaRoles{
 			Planner: getModelRoleConfig(ModelRolePlanner, "openai/o3-medium"),
@@ -416,6 +420,7 @@ func init() {
 	R1PlannerModelPack = R1PlannerSchema.ToModelPack()
 	PerplexityPlannerModelPack = PerplexityPlannerSchema.ToModelPack()
 	O3PlannerModelPack = O3PlannerSchema.ToModelPack()
+	BlabladorModelPack = BlabladorSchema.ToModelPack()
 
 	BuiltInModelPacks = []*ModelPack{
 		&DailyDriverModelPack,
@@ -434,9 +439,10 @@ func init() {
 		&O3PlannerModelPack,
 		&R1PlannerModelPack,
 		&PerplexityPlannerModelPack,
+		&BlabladorModelPack,
 	}
 
-	DefaultModelPack = &DailyDriverModelPack
+	DefaultModelPack = &BlabladorModelPack
 
 	for _, mp := range BuiltInModelPacks {
 		BuiltInModelPacksByName[mp.Name] = mp

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"plandex-server/db"
 	"strings"
 	"time"
@@ -27,7 +28,8 @@ type AgentZeroRequest struct {
 }
 
 type AgentZeroResponse struct {
-	Response string `json:"response"`
+	Message string `json:"message"`
+	Context string `json:"context"`
 }
 
 func (state *activeTellStreamState) callCriticalCodeAgent() (string, error) {
@@ -91,8 +93,11 @@ func (state *activeTellStreamState) callAgentZero(message string, subagent strin
 	req, _ := http.NewRequest("POST", "https://auxteam-agent-skillset.hf.space/chat", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	// Authentication might be needed based on docs, but user didn't provide a token.
-	// I'll assume it works without for now or use a placeholder if I had one.
+	// Fetch AUTHENTICATION_TOKEN from environment variables
+	token := os.Getenv("AUTHENTICATION_TOKEN")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -107,9 +112,6 @@ func (state *activeTellStreamState) callAgentZero(message string, subagent strin
 	}
 
 	var azRes AgentZeroResponse
-	// The response format might vary, I'll try to decode it.
-	// Based on docs: {"title": ..., "endpoints": ...} - wait, that was /docs.
-	// Let's assume it returns a JSON with a response field.
 	err = json.NewDecoder(resp.Body).Decode(&azRes)
 	if err != nil {
 		// Try reading as raw string if JSON fails
@@ -117,7 +119,7 @@ func (state *activeTellStreamState) callAgentZero(message string, subagent strin
 		return string(body), nil
 	}
 
-	return azRes.Response, nil
+	return azRes.Message, nil
 }
 
 func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview string) {
@@ -237,8 +239,4 @@ func (state *activeTellStreamState) passToFinalAPI() {
 	log.Println("Passing to final API: https://example.com/api/finalize-project")
 	// Placeholder for final API call
 	http.Post("https://example.com/api/finalize-project", "application/json", nil)
-}
-
-func contains(s, substr string) bool {
-	return bytes.Contains([]byte(s), []byte(substr))
 }
