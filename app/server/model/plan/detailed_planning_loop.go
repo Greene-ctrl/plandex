@@ -236,7 +236,12 @@ func (state *activeTellStreamState) updatePlanWithRecommendation(rec string) {
 }
 
 func (state *activeTellStreamState) passToFinalAPI() {
-	log.Println("Passing to final API: https://example.com/api/finalize-project")
-	// Placeholder for final API call
-	http.Post("https://example.com/api/finalize-project", "application/json", nil)
+	log.Println("Passing to local finalization API: http://localhost:7860/finalize")
+	// Call the local receiver endpoint
+	reqBody, _ := json.Marshal(map[string]string{
+		"plan_id": state.plan.Id,
+		"status":  "approved",
+		"message": "All recommendations processed and project approved.",
+	})
+	http.Post("http://localhost:7860/finalize", "application/json", bytes.NewBuffer(reqBody))
 }

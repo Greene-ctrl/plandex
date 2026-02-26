@@ -30,6 +30,20 @@ func EnsureHandlePlandex() {
 func AddHealthRoutes(r *mux.Router) {
 	EnsureHandlePlandex()
 
+	HandlePlandexFn(r, "/", false, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `
+			<html>
+				<head><title>Plandex Server</title></head>
+				<body>
+					<h1>🚀 Plandex Server is running</h1>
+					<p>Restructured workflow with iterative detailed planning is active.</p>
+					<p>Version: 2.2.1</p>
+				</body>
+			</html>
+		`)
+	})
+
 	HandlePlandexFn(r, "/health", false, func(w http.ResponseWriter, r *http.Request) {
 		_, apiErr := hooks.ExecHook(hooks.HealthCheck, hooks.HookParams{})
 		if apiErr != nil {
@@ -187,6 +201,8 @@ func addApiRoutes(r *mux.Router, prefix string) {
 
 	HandlePlandexFn(r, prefix+"/org_user_config", false, handlers.GetOrgUserConfigHandler).Methods("GET")
 	HandlePlandexFn(r, prefix+"/org_user_config", false, handlers.UpdateOrgUserConfigHandler).Methods("PUT")
+
+	HandlePlandexFn(r, prefix+"/finalize", false, handlers.FinalizeProjectHandler).Methods("POST")
 }
 
 func addProxyableApiRoutes(r *mux.Router, prefix string) {
