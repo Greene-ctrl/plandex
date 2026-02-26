@@ -1,3 +1,12 @@
+---
+title: Plandex
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 <h1 align="center">
  <a href="https://plandex.ai">
   <picture>
