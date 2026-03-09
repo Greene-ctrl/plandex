@@ -57,9 +57,11 @@ func GetFinalProjectOverviewPrompt(params CreatePromptParams) string {
     2.  **GitHub Repo Task Lists**: For each GitHub repository involved (the main project and any researched/recommended external repos), provide a detailed list of tasks in **Markdown format**. These tasks should cover implementation, integration, and any necessary changes.
     3.  **FastAPI Interactions**: Explicitly detail how components communicate via FastAPI endpoints (endpoints, methods, and purpose).
     4.  **Deployment Strategy**:
-        - Determine if all components can be deployed within a single Docker container (e.g., as part of the main project backend/frontend).
-        - If not (e.g., due to size, complexity, or resource requirements), specify which components should be deployed individually and how they should connect via HTTPS.
-        - Provide reasoning for the chosen strategy.
+        - Deployment MUST always be inside a dockerized Hugging Face Space.
+        - Each Hugging Face Space has a hardware limit of **4 vCPU and 16GB vRAM**.
+        - Determine if all components can fit within a single Hugging Face Space.
+        - If the combined resource requirements exceed the 4 vCPU / 16GB vRAM limit, or if architectural separation is required, specify how components should be distributed across **multiple individual Hugging Face Spaces**, connecting via HTTPS.
+        - Provide reasoning for the chosen strategy, explicitly considering the 4 vCPU / 16GB vRAM constraints.
     5.  **Output Format**: Provide the entire overview in a single **Markdown** document.
 
     Example structure:

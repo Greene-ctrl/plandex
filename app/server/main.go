@@ -31,6 +31,8 @@ func main() {
 	routes.AddHealthRoutes(r)
 	routes.AddApiRoutes(r)
 	routes.AddProxyableApiRoutes(r)
+	routes.AddApiRoutesWithPrefix(r, "/api/v1")
+	routes.AddProxyableApiRoutesWithPrefix(r, "/api/v1")
 	setup.MustLoadIp()
 	setup.MustInitDb()
 	setup.StartServer(r, nil, nil)

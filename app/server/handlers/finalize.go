@@ -69,8 +69,8 @@ graph TD
 - [ ] Add unit tests for state management logic.
 
 ## 4. Deployment Strategy
-- **Strategy**: Distributed HTTPS
-- **Reasoning**: The Device Service needs to scale independently and may be deployed on edge hardware closer to the IoT devices, while the Home Gateway runs in a central cloud environment.
+- **Strategy**: Distributed across Multiple Hugging Face Spaces (HTTPS)
+- **Reasoning**: The combined resource requirements for the Home Gateway and the high-performance Device Service exceed the hardware limits of a single Hugging Face Space (4 vCPU / 16GB vRAM). Therefore, the components are split into two separate dockerized Spaces to ensure stability and performance, communicating securely via HTTPS and FastAPI.
 
 <PlandexFinish/>
 `
