@@ -42,7 +42,9 @@ export DATABASE_URL="postgres://plandex:plandex@localhost:5432/plandex?sslmode=d
 export GOENV=development\n\
 export LOCAL_MODE=1\n\
 export PLANDEX_BASE_DIR=/plandex-server\n\
+export LITELLM_PROXY_DIR=/app/app/server\n\
 mkdir -p /plandex-server\n\
+cd /app/app/server\n\
 ./plandex-server' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Set the port and expose it
