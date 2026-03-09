@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"plandex-server/db"
+	"plandex-server/model/prompts"
 	"strings"
 	"time"
 )
@@ -136,6 +137,7 @@ func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview st
 
 	currentRecommendations := initialOverview
 	var rejections []string
+	allFindings := "Initial Overview:\n" + initialOverview + "\n\n"
 
 	for {
 		// 1. Call Critical Code Agent
@@ -144,6 +146,7 @@ func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview st
 			log.Printf("Error calling Critical Code Agent: %v", err)
 			break
 		}
+		allFindings += fmt.Sprintf("Critical Code Agent Report:\n%s\n\n", report)
 
 		// 2. Send report to Agent Zero
 		prompt := fmt.Sprintf("Investigate the following analysis from the Critical Code Agent: \n\n%s\n\nContext of component structure: \n\n%s\n\nProvide recommendations for GitHub projects and Hugging Face spaces.", report, currentRecommendations)
@@ -156,12 +159,9 @@ func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview st
 			log.Printf("Error calling Agent Zero: %v", err)
 			break
 		}
+		allFindings += fmt.Sprintf("Agent Zero Research:\n%s\n\n", azResponse)
 
 		// 3. Evaluate recommendations (Agent Zero handles confidence internally based on prompt)
-		// User says: "and then I should the components recommended by the critical code agent and only if the agent/0 is confident that these are good recommodations it should allow them and if not reject them"
-		// "if we have rejections to rejection is being a second prompt message after the first investigation and we send each recommendation by a one message and wait until 0 has touched it based on the context"
-
-		// This suggests another loop with Agent Zero for each recommendation.
 		recommendations := state.extractRecommendations(azResponse)
 
 		newRejections := []string{}
@@ -177,16 +177,18 @@ func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview st
 			if state.isApproved(evalResponse) {
 				log.Printf("Recommendation approved: %s", rec)
 				state.updatePlanWithRecommendation(rec)
+				allFindings += fmt.Sprintf("Approved Recommendation: %s\nEvaluation: %s\n\n", rec, evalResponse)
 			} else {
 				log.Printf("Recommendation rejected: %s", rec)
 				newRejections = append(newRejections, rec)
+				allFindings += fmt.Sprintf("Rejected Recommendation: %s\nEvaluation: %s\n\n", rec, evalResponse)
 			}
 		}
 
 		rejections = append(rejections, newRejections...)
 
 		if len(newRejections) == 0 {
-			log.Println("No more new recommendations or rejections. Project approved.")
+			log.Println("No more new recommendations or rejections. Project research complete.")
 			break
 		}
 
@@ -194,8 +196,27 @@ func (state *activeTellStreamState) startDetailedPlanningLoop(initialOverview st
 		log.Println("Rejections found, looping back to Critical Code Agent")
 	}
 
-	// Final step: Pass to another API (placeholder)
-	state.passToFinalAPI()
+	// Final step: Generate project overview and pass to finalization API
+	finalOverview, err := state.generateFinalOverview(allFindings)
+	if err != nil {
+		log.Printf("Error generating final overview: %v", err)
+		state.passToFinalAPI("Error generating final overview: " + err.Error())
+	} else {
+		state.passToFinalAPI(finalOverview)
+	}
+}
+
+func (state *activeTellStreamState) generateFinalOverview(allInfo string) (string, error) {
+	log.Println("Generating final project overview")
+
+	params := prompts.CreatePromptParams{}
+	sysPrompt := prompts.GetFinalProjectOverviewPrompt(params)
+
+	fullPrompt := sysPrompt + "\n\nCONTEXT AND RESEARCH FINDINGS:\n" + allInfo
+
+	// Using Agent Zero to synthesize findings into the final overview format
+	// The user mentioned using the 'alias-huge' (alias-large) model, which is typically what Agent Zero uses for complex tasks.
+	return state.callAgentZero(fullPrompt, "research agent")
 }
 
 func (state *activeTellStreamState) extractRecommendations(response string) []string {
@@ -235,13 +256,14 @@ func (state *activeTellStreamState) updatePlanWithRecommendation(rec string) {
 	}
 }
 
-func (state *activeTellStreamState) passToFinalAPI() {
+func (state *activeTellStreamState) passToFinalAPI(overview string) {
 	log.Println("Passing to local finalization API: http://localhost:7860/finalize")
 	// Call the local receiver endpoint
 	reqBody, _ := json.Marshal(map[string]string{
-		"plan_id": state.plan.Id,
-		"status":  "approved",
-		"message": "All recommendations processed and project approved.",
+		"plan_id":  state.plan.Id,
+		"status":   "approved",
+		"message":  "All recommendations processed and project approved.",
+		"overview": overview,
 	})
 	http.Post("http://localhost:7860/finalize", "application/json", bytes.NewBuffer(reqBody))
 }

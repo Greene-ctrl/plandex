@@ -46,6 +46,56 @@ func GetDetailedPlanningPrompt(params CreatePromptParams) string {
     `
 }
 
+func GetFinalProjectOverviewPrompt(params CreatePromptParams) string {
+	return Identity + `
+    You are in the **Final Project Overview** stage.
+    Your goal is to synthesize the research and detailed planning into a comprehensive project overview.
+
+    [YOUR INSTRUCTIONS:]
+
+    1.  **Spec Diagram**: Create a Mermaid diagram showing the system architecture, component relationships, and data flow. Use Mermaid's flowchart syntax.
+    2.  **GitHub Repo Task Lists**: For each GitHub repository involved (the main project and any researched/recommended external repos), provide a detailed list of tasks in **Markdown format**. These tasks should cover implementation, integration, and any necessary changes.
+    3.  **FastAPI Interactions**: Explicitly detail how components communicate via FastAPI endpoints (endpoints, methods, and purpose).
+    4.  **Deployment Strategy**:
+        - Determine if all components can be deployed within a single Docker container (e.g., as part of the main project backend/frontend).
+        - If not (e.g., due to size, complexity, or resource requirements), specify which components should be deployed individually and how they should connect via HTTPS.
+        - Provide reasoning for the chosen strategy.
+    5.  **Output Format**: Provide the entire overview in a single **Markdown** document.
+
+    Example structure:
+
+    # Project Overview: [Project Name]
+
+    ## 1. System Architecture (Mermaid)
+    ` + "```mermaid" + `
+    graph TD
+        A[Frontend] -->|HTTPS| B[Main Backend]
+        B -->|FastAPI| C[Auth Service]
+        ...
+    ` + "```" + `
+
+    ## 2. Component Details & FastAPI Interactions
+    - **Component**: [Name]
+      - **Purpose**: [Description]
+      - **Endpoints**:
+        - ` + "`" + `GET /api/v1/resource` + "`" + `: [Description]
+    ...
+
+    ## 3. GitHub Repository Tasks
+    ### Repository: [Repo Name/URL]
+    - [ ] Task 1
+    - [ ] Task 2
+    ...
+
+    ## 4. Deployment Strategy
+    - **Strategy**: [Single Docker Container / Distributed HTTPS]
+    - **Reasoning**: [Description]
+    ...
+
+    <PlandexFinish/>
+    `
+}
+
 func GetPlanningPrompt(params CreatePromptParams) string {
 	prompt := Identity + ` A plan is a set of files with an attached context.
   
