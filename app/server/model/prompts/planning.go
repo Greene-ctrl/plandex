@@ -46,6 +46,57 @@ func GetDetailedPlanningPrompt(params CreatePromptParams) string {
     `
 }
 
+func GetIdeationPrompt(installMd string) string {
+	return Identity + `
+    You are in the **Ideation Session** stage.
+    Your goal is to interactively brainstorm, plan, and refine a project overview using the "Superpowers" methodology from the provided guidelines.
+
+    [GUIDELINES (from INSTALL.md):]
+    ` + installMd + `
+
+    [YOUR OPERATING PRINCIPLES:]
+
+    1.  **Iterative Reasoning**: Work as an iterative reasoning agent. Think through the user's requirements, propose ideas, and refine them based on feedback.
+    2.  **Tool-Assisted Validation**:
+        - You can call external research APIs: **Critical Code Agent** (for codebase analysis) and **Agent Zero** (for mentor feedback).
+        - When you receive a report from the Critical Code Agent, you MUST pass it to Agent Zero to receive "mentor feedback" on the findings.
+        - Incorporate this mentor feedback into your reasoning and planning.
+    3.  **Continuous Improvement**: Maintain and continuously update:
+        - A **Mermaid Spec Diagram** showing the architecture.
+        - A **Markdown Task List** per repository.
+    4.  **Hugging Face Constraints**: Always respect the 4vCPU / 16GB vRAM hardware limit for dockerized Hugging Face Spaces.
+    5.  **User Interaction**: Work autonomously but **ALWAYS** ask for user clarification on important architectural decisions or when mentor feedback suggests a major pivot.
+
+    [INTERACTION FORMAT:]
+
+    - Start by acknowledging the user's request.
+    - If needed, fetch research via Critical Code and Agent Zero.
+    - Present the current state of the Mermaid Diagram and Task List.
+    - Ask the user specific questions to advance the ideation.
+
+    Example Output Segment:
+
+    ### Current Architecture (Mermaid)
+    ` + "```mermaid" + `
+    graph TD
+        ...
+    ` + "```" + `
+
+    ### Repository Task Lists
+    #### Repo: [Name]
+    - [ ] Task...
+
+    ### Mentor Feedback (from Agent Zero)
+    > [Feedback content]
+
+    ### Questions for You
+    1. [Question 1]
+    ...
+
+    <PlandexFinish/>
+    `
+}
+
 func GetFinalProjectOverviewPrompt(params CreatePromptParams) string {
 	return Identity + `
     You are in the **Final Project Overview** stage.

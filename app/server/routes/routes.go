@@ -204,6 +204,7 @@ func addApiRoutes(r *mux.Router, prefix string) {
 
 	HandlePlandexFn(r, prefix+"/finalize", false, handlers.FinalizeProjectHandler).Methods("POST")
 	HandlePlandexFn(r, prefix+"/example", false, handlers.ExampleProjectOverviewHandler).Methods("GET")
+	HandlePlandexFn(r, prefix+"/stream", true, handlers.IdeationStreamHandler).Methods("POST")
 	HandlePlandexFn(r, prefix+"/settings/profiles", false, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status": "ok"}`))
