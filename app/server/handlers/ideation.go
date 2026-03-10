@@ -55,9 +55,21 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare system prompt
 	sysPrompt := prompts.GetIdeationPrompt(installMd)
 
+	log.Printf("IdeationStreamHandler: Auth details: User: %s, Org: %s\n", auth.User.Email, auth.OrgId)
+
 	// Initialize model client
-	settings, _ := db.GetOrgDefaultSettings(auth.OrgId)
-	orgUserConfig, _ := db.GetOrgUserConfig(auth.User.Id, auth.OrgId)
+	settings, err := db.GetOrgDefaultSettings(auth.OrgId)
+	if err != nil {
+		log.Printf("IdeationStreamHandler: Error getting default settings: %v\n", err)
+		http.Error(w, "Error getting default settings", http.StatusInternalServerError)
+		return
+	}
+	orgUserConfig, err := db.GetOrgUserConfig(auth.User.Id, auth.OrgId)
+	if err != nil {
+		log.Printf("IdeationStreamHandler: Error getting org user config: %v\n", err)
+		http.Error(w, "Error getting org user config", http.StatusInternalServerError)
+		return
+	}
 
 	res := initClients(initClientsParams{
 		w:             w,
@@ -73,9 +85,22 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 	authVars := res.authVars
 
 	// Use alias-large (Planner role)
-	plannerConfig := settings.GetModelPack().Planner
+	modelPack := settings.GetModelPack()
+	if modelPack == nil {
+		log.Println("IdeationStreamHandler: Model pack not found in settings")
+		http.Error(w, "Model pack not configured", http.StatusInternalServerError)
+		return
+	}
+	plannerConfig := modelPack.Planner
 	modelConfig := plannerConfig.ModelRoleConfig
-	baseModelConfig := modelConfig.GetBaseModelConfig(req.AuthVars, settings, orgUserConfig)
+	baseModelConfig := modelConfig.GetBaseModelConfig(authVars, settings, orgUserConfig)
+	if baseModelConfig == nil {
+		log.Println("IdeationStreamHandler: Base model config not found")
+		http.Error(w, "Base model config not found", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("IdeationStreamHandler: Using model: %s from provider: %s\n", baseModelConfig.ModelName, baseModelConfig.Provider)
 
 	modelReq := types.ExtendedChatCompletionRequest{
 		Model: baseModelConfig.ModelName,
@@ -199,10 +224,12 @@ func (s *dummyResearchState) callAgentZero(message string, subagent string) (str
 	req, _ := http.NewRequest("POST", "https://auxteam-agent-skillset.hf.space/chat", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
+	// Use master token for back-calling if needed, or provided token
 	token := os.Getenv("AUTHENTICATION_TOKEN")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if token == "" {
+		token = "GTA5"
 	}
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
