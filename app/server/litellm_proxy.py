@@ -51,7 +51,7 @@ import re
 
 # _turn_on_debug()
 
-LOGGING_ENABLED = False
+LOGGING_ENABLED = True
 
 print("Litellm proxy: starting proxy server on port 4000...")
 

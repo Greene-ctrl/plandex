@@ -63,7 +63,8 @@ func GetAuthHeader(r *http.Request) (*shared.AuthHeader, error) {
 	bytes, err := base64.URLEncoding.DecodeString(encoded)
 
 	if err != nil {
-		return nil, fmt.Errorf("error decoding auth token: %v", err)
+		log.Printf("error decoding auth token as base64 - assuming plain token: %v\n", err)
+		return &shared.AuthHeader{Token: encoded}, nil
 	}
 
 	// parse the credentials
@@ -71,7 +72,8 @@ func GetAuthHeader(r *http.Request) (*shared.AuthHeader, error) {
 	err = json.Unmarshal(bytes, &parsed)
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing auth token: %v", err)
+		log.Printf("error parsing auth token as JSON - assuming plain token: %v\n", err)
+		return &shared.AuthHeader{Token: encoded}, nil
 	}
 
 	return &parsed, nil
@@ -512,16 +514,21 @@ func execAuthenticate(w http.ResponseWriter, r *http.Request, requireOrg bool, r
 		}
 	}
 
-	if parsed.OrgId == "" {
-		log.Println("no org id")
-		if raiseErr {
-			http.Error(w, "no org id", http.StatusUnauthorized)
+	orgId := parsed.OrgId
+	if orgId == "" {
+		log.Println("no org id in header - falling back to first accessible org")
+		orgs, err := db.GetAccessibleOrgsForUser(user)
+		if err != nil || len(orgs) == 0 {
+			if raiseErr {
+				http.Error(w, "no accessible orgs found", http.StatusUnauthorized)
+			}
+			return nil
 		}
-		return nil
+		orgId = orgs[0].Id
 	}
 
 	// validate the org membership
-	isMember, err := db.ValidateOrgMembership(authToken.UserId, parsed.OrgId)
+	isMember, err := db.ValidateOrgMembership(authToken.UserId, orgId)
 
 	if err != nil {
 		log.Printf("error validating org membership: %v\n", err)
@@ -585,7 +592,7 @@ func execAuthenticate(w http.ResponseWriter, r *http.Request, requireOrg bool, r
 	auth := &types.ServerAuth{
 		AuthToken:   authToken,
 		User:        user,
-		OrgId:       parsed.OrgId,
+		OrgId:       orgId,
 		Permissions: permissionsMap,
 	}
 
@@ -608,7 +615,7 @@ func execAuthenticate(w http.ResponseWriter, r *http.Request, requireOrg bool, r
 		return nil
 	}
 
-	log.Printf("UserId: %s, Email: %s, OrgId: %s\n", authToken.UserId, user.Email, parsed.OrgId)
+	log.Printf("UserId: %s, Email: %s, OrgId: %s\n", authToken.UserId, user.Email, orgId)
 
 	return auth
 

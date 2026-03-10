@@ -59,7 +59,18 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 	settings, _ := db.GetOrgDefaultSettings(auth.OrgId)
 	orgUserConfig, _ := db.GetOrgUserConfig(auth.User.Id, auth.OrgId)
 
-	clients := model.InitClients(req.AuthVars, settings, orgUserConfig)
+	res := initClients(initClientsParams{
+		w:             w,
+		auth:          auth,
+		authVars:      req.AuthVars,
+		settings:      settings,
+		orgUserConfig: orgUserConfig,
+	})
+	if res.clients == nil {
+		return
+	}
+	clients := res.clients
+	authVars := res.authVars
 
 	// Use alias-large (Planner role)
 	plannerConfig := settings.GetModelPack().Planner
@@ -81,7 +92,7 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 		Stream: true,
 	}
 
-	stream, err := model.CreateChatCompletionStream(clients, req.AuthVars, &modelConfig, settings, orgUserConfig, auth.OrgId, auth.User.Id, r.Context(), modelReq)
+	stream, err := model.CreateChatCompletionStream(clients, authVars, &modelConfig, settings, orgUserConfig, auth.OrgId, auth.User.Id, r.Context(), modelReq)
 	if err != nil {
 		log.Printf("Error starting ideation stream: %v\n", err)
 		http.Error(w, "Error starting ideation stream", http.StatusInternalServerError)
@@ -123,7 +134,7 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "data: \n\n### Initiating Research Validation...\n\n")
 		flusher.Flush()
 
-		findings, err := runIdeationResearch(req.Prompt, req.AuthVars)
+		findings, err := runIdeationResearch(req.Prompt, authVars)
 		if err != nil {
 			fmt.Fprintf(w, "data: Error during research: %s\n\n", err.Error())
 		} else {
