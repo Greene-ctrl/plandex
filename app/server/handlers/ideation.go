@@ -93,10 +93,21 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	plannerConfig := modelPack.Planner
 	modelConfig := plannerConfig.ModelRoleConfig
+
+	log.Printf("IdeationStreamHandler: Debug - ModelPack: %s, Planner ModelId: %s\n", modelPack.Name, modelConfig.ModelId)
+
+	// Diagnostic: List available auth keys
+	var keys []string
+	for k := range authVars {
+		keys = append(keys, k)
+	}
+	log.Printf("IdeationStreamHandler: Available AuthVars: %v\n", keys)
+
 	baseModelConfig := modelConfig.GetBaseModelConfig(authVars, settings, orgUserConfig)
 	if baseModelConfig == nil {
-		log.Println("IdeationStreamHandler: Base model config not found")
-		http.Error(w, "Base model config not found", http.StatusInternalServerError)
+		log.Printf("IdeationStreamHandler: Base model config not found for modelId: %s. Providers found: %v\n",
+			modelConfig.ModelId, modelConfig.GetProvidersForAuthVars(authVars, settings, orgUserConfig))
+		http.Error(w, fmt.Sprintf("Base model config not found for modelId: %s", modelConfig.ModelId), http.StatusInternalServerError)
 		return
 	}
 

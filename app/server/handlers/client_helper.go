@@ -69,6 +69,30 @@ func initClients(params initClientsParams) initClientsResult {
 		}
 		authVars = merged
 	}
+	// Inject server-side environment variables for known providers if not already set
+	for _, envVar := range []string{
+		shared.OpenAIEnvVar,
+		shared.OpenRouterApiKeyEnvVar,
+		shared.AnthropicApiKeyEnvVar,
+		shared.GoogleAIStudioApiKeyEnvVar,
+		shared.AzureOpenAIEnvVar,
+		shared.DeepSeekApiKeyEnvVar,
+		shared.PerplexityApiKeyEnvVar,
+		shared.BlabladorApiKeyEnvVar,
+		"AUTHENTICATION_TOKEN",
+		"HELMHOLTZ_API_KEY",
+		"SERVER_API_KEY",
+	} {
+		if authVars[envVar] == "" && os.Getenv(envVar) != "" {
+			authVars[envVar] = os.Getenv(envVar)
+		}
+	}
+
+	// Fallback for Blablador if specifically Helmholtz key is provided
+	if authVars[shared.BlabladorApiKeyEnvVar] == "" && authVars["HELMHOLTZ_API_KEY"] != "" {
+		authVars[shared.BlabladorApiKeyEnvVar] = authVars["HELMHOLTZ_API_KEY"]
+	}
+
 	if len(authVars) == 0 && os.Getenv("IS_CLOUD") != "" {
 		log.Println("No api keys/credentials provided for models")
 		http.Error(w, "No api keys/credentials provided for models", http.StatusBadRequest)
