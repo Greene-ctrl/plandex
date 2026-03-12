@@ -483,7 +483,16 @@ func execAuthenticate(w http.ResponseWriter, r *http.Request, requireOrg bool, r
 		var adminUsers []*db.User
 		err := db.Conn.Select(&adminUsers, "SELECT * FROM users ORDER BY created_at ASC LIMIT 1")
 		if err != nil || len(adminUsers) == 0 {
-			log.Println("execAuthenticate: Master token error - no users found")
+			log.Println("execAuthenticate: Master token - no users found, attempting to seed...")
+			seedErr := db.EnsureAdminUserAndOrg()
+			if seedErr != nil {
+				log.Printf("execAuthenticate: Seeding failed: %v\n", seedErr)
+			}
+			db.Conn.Select(&adminUsers, "SELECT * FROM users ORDER BY created_at ASC LIMIT 1")
+		}
+
+		if len(adminUsers) == 0 {
+			log.Println("execAuthenticate: Master token error - system still has no users after seeding")
 			if raiseErr {
 				http.Error(w, "Authentication error - system not initialized", http.StatusServiceUnavailable)
 			}

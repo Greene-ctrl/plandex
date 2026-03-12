@@ -39,6 +39,11 @@ func MustInitDb() {
 	if err != nil {
 		log.Fatal("Error caching org role ids: ", err)
 	}
+
+	err = db.EnsureAdminUserAndOrg()
+	if err != nil {
+		log.Fatal("Error ensuring admin user/org: ", err)
+	}
 }
 
 var shutdownHooks []func()

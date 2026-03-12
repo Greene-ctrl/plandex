@@ -1,8 +1,11 @@
 package db
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
+	shared "plandex-shared"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -54,4 +57,39 @@ func CreateAccount(name, email, emailVerificationId string, tx *sqlx.Tx) (*Creat
 		OrgId: orgId,
 		Token: token,
 	}, nil
+}
+
+func EnsureAdminUserAndOrg() error {
+	var userCount int
+	err := Conn.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+	if err != nil {
+		return fmt.Errorf("EnsureAdminUserAndOrg: error checking user count: %v", err)
+	}
+
+	if userCount > 0 {
+		return nil
+	}
+
+	log.Println("EnsureAdminUserAndOrg: No users found. Seeding default admin user and organization...")
+
+	err = WithTx(context.Background(), "seed admin", func(tx *sqlx.Tx) error {
+		// Create admin user
+		user, err := CreateUser("Admin", "admin@plandex.ai", tx)
+		if err != nil {
+			return fmt.Errorf("EnsureAdminUserAndOrg: error creating seed user: %v", err)
+		}
+
+		// Create default org
+		org, err := CreateOrg(&shared.CreateOrgRequest{
+			Name: "Plandex",
+		}, user.Id, &user.Domain, tx)
+		if err != nil {
+			return fmt.Errorf("EnsureAdminUserAndOrg: error creating seed org: %v", err)
+		}
+
+		log.Printf("EnsureAdminUserAndOrg: Successfully seeded Admin user (%s) and Org (%s)\n", user.Id, org.Id)
+		return nil
+	})
+
+	return err
 }
