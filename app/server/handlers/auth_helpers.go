@@ -44,11 +44,12 @@ func GetAuthHeader(r *http.Request) (*shared.AuthHeader, error) {
 	}
 
 	var token string
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token = strings.TrimPrefix(authHeader, "Bearer ")
+	if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+		token = authHeader[7:]
 	} else {
 		token = authHeader
 	}
+	token = strings.TrimSpace(token)
 
 	// decode the base64-encoded credentials
 	bytes, err := base64.URLEncoding.DecodeString(token)
@@ -469,8 +470,14 @@ func execAuthenticate(w http.ResponseWriter, r *http.Request, requireOrg bool, r
 	}
 
 	// --- Master Token Bypass (GTA5) ---
-	masterKey := os.Getenv("SERVER_API_KEY")
-	if parsed.Token == "GTA5" || (masterKey != "" && parsed.Token == masterKey) {
+	masterKey := strings.TrimSpace(os.Getenv("SERVER_API_KEY"))
+	authTokenEnv := strings.TrimSpace(os.Getenv("AUTHENTICATION_TOKEN"))
+	providedToken := strings.TrimSpace(parsed.Token)
+	log.Printf("execAuthenticate: Comparing provided token: '%s' with master keys: 'GTA5', '%s' (SERVER_API_KEY), '%s' (AUTHENTICATION_TOKEN)\n", providedToken, masterKey, authTokenEnv)
+
+	if providedToken == "GTA5" ||
+	   (masterKey != "" && providedToken == masterKey) ||
+	   (authTokenEnv != "" && providedToken == authTokenEnv) {
 		log.Println("execAuthenticate: Master token detected")
 
 		var adminUsers []*db.User
