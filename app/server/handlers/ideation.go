@@ -105,9 +105,18 @@ func IdeationStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	baseModelConfig := modelConfig.GetBaseModelConfig(authVars, settings, orgUserConfig)
 	if baseModelConfig == nil {
-		log.Printf("IdeationStreamHandler: Base model config not found for modelId: %s. Providers found: %v\n",
-			modelConfig.ModelId, modelConfig.GetProvidersForAuthVars(authVars, settings, orgUserConfig))
-		http.Error(w, fmt.Sprintf("Base model config not found for modelId: %s", modelConfig.ModelId), http.StatusInternalServerError)
+		providers := modelConfig.GetProvidersForAuthVars(authVars, settings, orgUserConfig)
+		log.Printf("IdeationStreamHandler: Base model config not found for modelId: %s. Providers evaluated: %v\n",
+			modelConfig.ModelId, providers)
+
+		// List all available clients for debugging
+		var clientKeys []string
+		for k := range clients {
+			clientKeys = append(clientKeys, k)
+		}
+		log.Printf("IdeationStreamHandler: Active Clients: %v\n", clientKeys)
+
+		http.Error(w, fmt.Sprintf("Base model config not found for modelId: %s. Available providers: %v", modelConfig.ModelId, providers), http.StatusInternalServerError)
 		return
 	}
 

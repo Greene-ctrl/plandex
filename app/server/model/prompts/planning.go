@@ -62,8 +62,8 @@ func GetIdeationPrompt(installMd string) string {
         - When you receive a report from the Critical Code Agent, you MUST pass it to Agent Zero to receive "mentor feedback" on the findings.
         - Incorporate this mentor feedback into your reasoning and planning.
     3.  **Continuous Improvement**: Maintain and continuously update:
-        - A **Mermaid Spec Diagram** showing the architecture.
-        - A **Markdown Task List** per repository.
+        - A **Mermaid Spec Diagram** showing the architecture (refer to https://github.com/gotalab/cc-sdd.git).
+        - A **JSON Task List** per repository (as a JSON block).
     4.  **Hugging Face Constraints**: Always respect the 4vCPU / 16GB vRAM hardware limit for dockerized Hugging Face Spaces.
     5.  **User Interaction**: Work autonomously but **ALWAYS** ask for user clarification on important architectural decisions or when mentor feedback suggests a major pivot.
 
@@ -104,8 +104,20 @@ func GetFinalProjectOverviewPrompt(params CreatePromptParams) string {
 
     [YOUR INSTRUCTIONS:]
 
-    1.  **Spec Diagram**: Create a Mermaid diagram showing the system architecture, component relationships, and data flow. Use Mermaid's flowchart syntax.
-    2.  **GitHub Repo Task Lists**: For each GitHub repository involved (the main project and any researched/recommended external repos), provide a detailed list of tasks in **Markdown format**. These tasks should cover implementation, integration, and any necessary changes.
+    1.  **Spec Diagram**: Create a Mermaid diagram showing the system architecture, component relationships, and data flow. Use Mermaid's flowchart syntax. Refer to the style and principles of spec diagrams as seen in https://github.com/gotalab/cc-sdd.git.
+    2.  **GitHub Repo Task Lists (JSON Format)**: For each GitHub repository involved (the main project and any researched/recommended external repos), provide a list of tasks.
+        - This MUST be provided as a JSON block within the Markdown overview.
+        - JSON Structure:
+          ` + "```json" + `
+          {
+            "repos": [
+              {
+                "name": "repository-name",
+                "tasks": ["task 1", "task 2", ...]
+              }
+            ]
+          }
+          ` + "```" + `
     3.  **FastAPI Interactions**: Explicitly detail how components communicate via FastAPI endpoints (endpoints, methods, and purpose).
     4.  **Deployment Strategy**:
         - Deployment MUST always be inside a dockerized Hugging Face Space.
@@ -135,10 +147,16 @@ func GetFinalProjectOverviewPrompt(params CreatePromptParams) string {
     ...
 
     ## 3. GitHub Repository Tasks
-    ### Repository: [Repo Name/URL]
-    - [ ] Task 1
-    - [ ] Task 2
-    ...
+    ` + "```json" + `
+    {
+      "repos": [
+        {
+          "name": "example-repo",
+          "tasks": ["Implement feature X", "Fix bug Y"]
+        }
+      ]
+    }
+    ` + "```" + `
 
     ## 4. Deployment Strategy
     - **Strategy**: [Single Docker Container / Distributed HTTPS]

@@ -88,9 +88,15 @@ func initClients(params initClientsParams) initClientsResult {
 		}
 	}
 
-	// Fallback for Blablador if specifically Helmholtz key is provided
-	if authVars[shared.BlabladorApiKeyEnvVar] == "" && authVars["HELMHOLTZ_API_KEY"] != "" {
-		authVars[shared.BlabladorApiKeyEnvVar] = authVars["HELMHOLTZ_API_KEY"]
+	// Fallback for Blablador if other keys are provided
+	if authVars[shared.BlabladorApiKeyEnvVar] == "" {
+		if authVars["HELMHOLTZ_API_KEY"] != "" {
+			authVars[shared.BlabladorApiKeyEnvVar] = authVars["HELMHOLTZ_API_KEY"]
+		} else if authVars["AUTHENTICATION_TOKEN"] != "" {
+			authVars[shared.BlabladorApiKeyEnvVar] = authVars["AUTHENTICATION_TOKEN"]
+		} else if authVars["SERVER_API_KEY"] != "" {
+			authVars[shared.BlabladorApiKeyEnvVar] = authVars["SERVER_API_KEY"]
+		}
 	}
 
 	if len(authVars) == 0 && os.Getenv("IS_CLOUD") != "" {
