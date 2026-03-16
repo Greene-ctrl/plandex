@@ -7,6 +7,10 @@ import (
 )
 
 func ProjectExists(orgId, projectId string) (bool, error) {
+	if !IsValidUUID(projectId) || !IsValidUUID(orgId) {
+		return false, nil
+	}
+
 	var count int
 	err := Conn.QueryRow("SELECT COUNT(*) FROM projects WHERE org_id = $1 AND id = $2", orgId, projectId).Scan(&count)
 

@@ -250,6 +250,10 @@ func SyncPlanTokens(orgId, planId, branch string) error {
 }
 
 func GetPlan(planId string) (*Plan, error) {
+	if !IsValidUUID(planId) {
+		return nil, nil
+	}
+
 	var plan Plan
 
 	err := Conn.Get(&plan, "SELECT * FROM plans WHERE id = $1", planId)
